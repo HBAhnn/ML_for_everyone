@@ -1,5 +1,3 @@
-#https://github.com/rasbt/deeplearning-models/blob/master/pytorch_ipynb/cnn/cnn-resnet101-cifar10.ipynb
-
 import os
 import time
 
@@ -21,13 +19,15 @@ import time
 import matplotlib.pyplot as plt
 from PIL import Image
 
-print(torch.cuda.is_available())
 
 if torch.cuda.is_available():
     torch.backends.cudnn.deterministic = True
 
-#Settings
+##########################
+### SETTINGS
+##########################
 
+# Hyperparameters
 RANDOM_SEED = 1
 LEARNING_RATE = 0.01
 NUM_EPOCHS = 50
@@ -35,8 +35,10 @@ NUM_EPOCHS = 50
 # Architecture
 NUM_CLASSES = 10
 BATCH_SIZE = 128
-DEVICE = torch.device('cuda:3')
+#changeByMe
+#DEVICE = torch.device('cuda:3')
 GRAYSCALE = False
+
 
 ##########################
 ### CIFAR-10 Dataset
@@ -50,6 +52,7 @@ GRAYSCALE = False
 train_indices = torch.arange(0, 49000)
 valid_indices = torch.arange(49000, 50000)
 
+
 train_and_valid = datasets.CIFAR10(root='data',
                                    train=True,
                                    transform=transforms.ToTensor(),
@@ -58,9 +61,11 @@ train_and_valid = datasets.CIFAR10(root='data',
 train_dataset = Subset(train_and_valid, train_indices)
 valid_dataset = Subset(train_and_valid, valid_indices)
 
+
 test_dataset = datasets.CIFAR10(root='data',
                                 train=False,
                                 transform=transforms.ToTensor())
+
 
 #####################################################
 ### Data Loaders
@@ -81,25 +86,29 @@ test_loader = DataLoader(dataset=test_dataset,
                          num_workers=8,
                          shuffle=False)
 
-#####################################################
+####################################################
 
 # Checking the dataset
-for images, labels in train_loader:
-    print('Image batch dimensions:', images.shape)
-    print('Image label dimensions:', labels.shape)
-    break
 
-for images, labels in test_loader:
-    print('Image batch dimensions:', images.shape)
-    print('Image label dimensions:', labels.shape)
-    break
+def checkDataset():
+    for images, labels in train_loader:
+        print('Image batch dimensions:', images.shape)
+        print('Image label dimensions:', labels.shape)
+        break
 
-for images, labels in valid_loader:
-    print('Image batch dimensions:', images.shape)
-    print('Image label dimensions:', labels.shape)
-    break
+    for images, labels in test_loader:
+        print('Image batch dimensions:', images.shape)
+        print('Image label dimensions:', labels.shape)
+        break
+
+    for images, labels in valid_loader:
+        print('Image batch dimensions:', images.shape)
+        print('Image label dimensions:', labels.shape)
+        break
 
 
+if __name__ == '__main__':
+    checkDataset()
 
 ##########################
 ### MODEL
@@ -235,10 +244,13 @@ torch.manual_seed(RANDOM_SEED)
 ##########################
 
 model = resnet101(NUM_CLASSES, GRAYSCALE)
-model.to(DEVICE)
+#changeByMe
+#model.to(DEVICE)
+model.to("cpu")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
+#################################TRAIN
 
 def compute_accuracy(model, data_loader, device):
     correct_pred, num_examples = 0, 0
@@ -258,41 +270,47 @@ start_time = time.time()
 # use random seed for reproducibility (here batch shuffling)
 torch.manual_seed(RANDOM_SEED)
 
-for epoch in range(NUM_EPOCHS):
+def training():
+    for epoch in range(NUM_EPOCHS):
 
-    model.train()
+        model.train()
 
-    for batch_idx, (features, targets) in enumerate(train_loader):
+        for batch_idx, (features, targets) in enumerate(train_loader):
 
-        ### PREPARE MINIBATCH
-        features = features.to(DEVICE)
-        targets = targets.to(DEVICE)
+            ### PREPARE MINIBATCH
+            features = features.to("cpu")
+            targets = targets.to("cpu")
 
-        ### FORWARD AND BACK PROP
-        logits, probas = model(features)
-        cost = F.cross_entropy(logits, targets)
-        optimizer.zero_grad()
+            ### FORWARD AND BACK PROP
+            logits, probas = model(features)
+            cost = F.cross_entropy(logits, targets)
+            optimizer.zero_grad()
 
-        cost.backward()
+            cost.backward()
 
-        ### UPDATE MODEL PARAMETERS
-        optimizer.step()
+            ### UPDATE MODEL PARAMETERS
+            optimizer.step()
 
-        ### LOGGING
-        if not batch_idx % 120:
-            print(f'Epoch: {epoch + 1:03d}/{NUM_EPOCHS:03d} | '
-                  f'Batch {batch_idx:03d}/{len(train_loader):03d} |'
-                  f' Cost: {cost:.4f}')
+            ### LOGGING
+            if not batch_idx % 120:
+                print(f'Epoch: {epoch + 1:03d}/{NUM_EPOCHS:03d} | '
+                      f'Batch {batch_idx:03d}/{len(train_loader):03d} |'
+                      f' Cost: {cost:.4f}')
 
-    # no need to build the computation graph for backprop when computing accuracy
-    with torch.set_grad_enabled(False):
-        train_acc = compute_accuracy(model, train_loader, device=DEVICE)
-        valid_acc = compute_accuracy(model, valid_loader, device=DEVICE)
-        print(f'Epoch: {epoch + 1:03d}/{NUM_EPOCHS:03d} Train Acc.: {train_acc:.2f}%'
-              f' | Validation Acc.: {valid_acc:.2f}%')
+        # no need to build the computation graph for backprop when computing accuracy
+        with torch.set_grad_enabled(False):
+            train_acc = compute_accuracy(model, train_loader, device="cpu")
+            valid_acc = compute_accuracy(model, valid_loader, device="cpu")
+            print(f'Epoch: {epoch + 1:03d}/{NUM_EPOCHS:03d} Train Acc.: {train_acc:.2f}%'
+                  f' | Validation Acc.: {valid_acc:.2f}%')
 
-    elapsed = (time.time() - start_time) / 60
-    print(f'Time elapsed: {elapsed:.2f} min')
+        elapsed = (time.time() - start_time) / 60
+        print(f'Time elapsed: {elapsed:.2f} min')
 
-elapsed = (time.time() - start_time) / 60
-print(f'Total Training Time: {elapsed:.2f} min')
+        elapsed = (time.time() - start_time) / 60
+        print(f'Total Training Time: {elapsed:.2f} min')
+
+
+
+if __name__ == '__main__':
+    training()
